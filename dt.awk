@@ -1,11 +1,6 @@
 #!/usr/bin/env -S busybox awk -f
 
 BEGIN {
-    if (ARGC < 2) {
-        print "this is where the repl goes"
-        exit 0
-    }
-
     prog=ARGV[1]
     delete ARGV
 }
