@@ -25,7 +25,7 @@ function die(msg) {
 }
 
 function push(val) {
-    ctx[ctxsz++] = val
+    ctx[ctxsz++] = quote(val, depth)
 }
 
 function pop() {
@@ -34,10 +34,39 @@ function pop() {
     return ctx[--ctxsz]
 }
 
-function eval(str,    tok) {
-    split(str, chrs, "")
+function quote(val, depth,    i, n, chr, chrs, ret) {
+    if (!depth)
+        return val
 
-    for (i in chrs) {
+    n = split(val, chrs, "")
+    for (i = 1; i <= n; i++) {
+        chr = chrs[i]
+        if (chr == "\"")
+            ret = ret "\\"
+        else if (chr == "\\")
+            ret = ret "\\"
+        ret = ret chr
+    }
+
+    return quote(ret, depth-1)
+}
+
+function unquote(val,    i, n, chr, chrs, ret) {
+    n = split(val, chrs, "")
+    for (i = 1; i <= n; i++) {
+        chr = chrs[i]
+        if (chr != "\\") {
+            ret = ret chr
+        }
+    }
+
+    return ret
+}
+
+function eval(str,    i, n, chr, chrs, tok) {
+    n = split(str, chrs, "")
+
+    for (i = 1; i <= n; i++) {
         chr = chrs[i]
         if (chr == "[") {
             if (tok != "") {
@@ -47,24 +76,25 @@ function eval(str,    tok) {
             depth++
         } else if (chr == "]") {
             if (tok != "") {
-                add_or_call(tok)
+                push(tok)
                 tok = ""
             }
             depth--
             if (depth < 0)
                 die("stack underflow")
-        } else if (chr == "\"") {
-            if (in_quote) {
+        } else if (chr == "\"" && !depth) {
+            if (in_str) {
                 push(tok)
-                in_quote = 0
+                tok = ""
+                in_str = 0
             } else {
                 if (tok != "") {
                     add_or_call(tok)
                     tok = ""
                 }
-                in_quote = 1
+                in_str = 1
             }
-        } else if (chr == " " && !in_quote) {
+        } else if (chr == " " && !in_str && !depth) {
             if (tok != "") {
                 add_or_call(tok)
                 tok = ""
@@ -79,7 +109,9 @@ function eval(str,    tok) {
 }
 
 function add_or_call(tok) {
-    if (match(tok, "^[0-9]+\\.[0-9]+$"))
+    if (depth)
+        push(tok)
+    else if (match(tok, "^[0-9]+\\.[0-9]+$"))
         push(tok)
     else if (match(tok, "^[0-9]+$"))
         push(tok)
@@ -104,6 +136,8 @@ function call(name) {
         push(upcase(pop()))
     } else if (name == "downcase") {
         push(downcase(pop()))
+    } else if (name == "do") {
+        exec(pop())
     } else {
         die("unknown function: " name)
     }
@@ -131,4 +165,8 @@ function upcase(x) {
 
 function downcase(x) {
     return tolower(x)
+}
+
+function exec(x) {
+    return eval(unquote(x))
 }
